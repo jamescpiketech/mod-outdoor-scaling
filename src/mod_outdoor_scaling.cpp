@@ -172,6 +172,54 @@ namespace
         return result;
     }
 
+    float GetWorldHealthRate(Creature const* creature)
+    {
+        if (!creature)
+            return 1.0f;
+
+        switch (creature->GetCreatureTemplate()->rank)
+        {
+            case CREATURE_ELITE_NORMAL:      return sWorld->getRate(RATE_CREATURE_NORMAL_HP);
+            case CREATURE_ELITE_ELITE:       return sWorld->getRate(RATE_CREATURE_ELITE_ELITE_HP);
+            case CREATURE_ELITE_RAREELITE:   return sWorld->getRate(RATE_CREATURE_ELITE_RAREELITE_HP);
+            case CREATURE_ELITE_WORLDBOSS:   return sWorld->getRate(RATE_CREATURE_ELITE_WORLDBOSS_HP);
+            case CREATURE_ELITE_RARE:        return sWorld->getRate(RATE_CREATURE_ELITE_RARE_HP);
+            default:                         return sWorld->getRate(RATE_CREATURE_ELITE_ELITE_HP);
+        }
+    }
+
+    float GetWorldDamageRate(Creature const* creature)
+    {
+        if (!creature)
+            return 1.0f;
+
+        switch (creature->GetCreatureTemplate()->rank)
+        {
+            case CREATURE_ELITE_NORMAL:      return sWorld->getRate(RATE_CREATURE_NORMAL_DAMAGE);
+            case CREATURE_ELITE_ELITE:       return sWorld->getRate(RATE_CREATURE_ELITE_ELITE_DAMAGE);
+            case CREATURE_ELITE_RAREELITE:   return sWorld->getRate(RATE_CREATURE_ELITE_RAREELITE_DAMAGE);
+            case CREATURE_ELITE_WORLDBOSS:   return sWorld->getRate(RATE_CREATURE_ELITE_WORLDBOSS_DAMAGE);
+            case CREATURE_ELITE_RARE:        return sWorld->getRate(RATE_CREATURE_ELITE_RARE_DAMAGE);
+            default:                         return sWorld->getRate(RATE_CREATURE_ELITE_ELITE_DAMAGE);
+        }
+    }
+
+    float GetWorldSpellDamageRate(Creature const* creature)
+    {
+        if (!creature)
+            return 1.0f;
+
+        switch (creature->GetCreatureTemplate()->rank)
+        {
+            case CREATURE_ELITE_NORMAL:      return sWorld->getRate(RATE_CREATURE_NORMAL_SPELLDAMAGE);
+            case CREATURE_ELITE_ELITE:       return sWorld->getRate(RATE_CREATURE_ELITE_ELITE_SPELLDAMAGE);
+            case CREATURE_ELITE_RAREELITE:   return sWorld->getRate(RATE_CREATURE_ELITE_RAREELITE_SPELLDAMAGE);
+            case CREATURE_ELITE_WORLDBOSS:   return sWorld->getRate(RATE_CREATURE_ELITE_WORLDBOSS_SPELLDAMAGE);
+            case CREATURE_ELITE_RARE:        return sWorld->getRate(RATE_CREATURE_ELITE_RARE_SPELLDAMAGE);
+            default:                         return sWorld->getRate(RATE_CREATURE_ELITE_ELITE_SPELLDAMAGE);
+        }
+    }
+
     std::string SourceToString(OutdoorScalingInfo::Source source)
     {
         switch (source)
@@ -213,6 +261,37 @@ namespace
     public:
         OutdoorScaling_AllCreatureScript() : AllCreatureScript("OutdoorScaling_AllCreatureScript") { }
 
+        void ApplyDamageScale(Creature* creature, float mult) const
+        {
+            if (std::abs(mult - 1.0f) < std::numeric_limits<float>::epsilon())
+                return;
+
+            float worldDamageRate = GetWorldDamageRate(creature);
+            if (worldDamageRate <= 0.0f)
+                worldDamageRate = 1.0f;
+
+            float baseMin = creature->GetWeaponDamageRange(BASE_ATTACK, MINDAMAGE);
+            float baseMax = creature->GetWeaponDamageRange(BASE_ATTACK, MAXDAMAGE);
+            float offMin  = creature->GetWeaponDamageRange(OFF_ATTACK, MINDAMAGE);
+            float offMax  = creature->GetWeaponDamageRange(OFF_ATTACK, MAXDAMAGE);
+            float rngMin  = creature->GetWeaponDamageRange(RANGED_ATTACK, MINDAMAGE);
+            float rngMax  = creature->GetWeaponDamageRange(RANGED_ATTACK, MAXDAMAGE);
+
+            float baseMinNorm = baseMin / worldDamageRate;
+            float baseMaxNorm = baseMax / worldDamageRate;
+            float offMinNorm  = offMin  / worldDamageRate;
+            float offMaxNorm  = offMax  / worldDamageRate;
+            float rngMinNorm  = rngMin  / worldDamageRate;
+            float rngMaxNorm  = rngMax  / worldDamageRate;
+
+            creature->SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, baseMinNorm * mult);
+            creature->SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, baseMaxNorm * mult);
+            creature->SetBaseWeaponDamage(OFF_ATTACK, MINDAMAGE, offMinNorm * mult);
+            creature->SetBaseWeaponDamage(OFF_ATTACK, MAXDAMAGE, offMaxNorm * mult);
+            creature->SetBaseWeaponDamage(RANGED_ATTACK, MINDAMAGE, rngMinNorm * mult);
+            creature->SetBaseWeaponDamage(RANGED_ATTACK, MAXDAMAGE, rngMaxNorm * mult);
+        }
+
         void OnCreatureSelectLevel(const CreatureTemplate* /*cinfo*/, Creature* creature) override
         {
             if (!creature)
@@ -234,17 +313,24 @@ namespace
                 return;
             }
 
-            if (std::abs(scaling.healthMult - 1.0f) < std::numeric_limits<float>::epsilon())
-                return;
+            float worldHealthRate = GetWorldHealthRate(creature);
+            if (worldHealthRate <= 0.0f)
+                worldHealthRate = 1.0f;
 
-            uint32 newMaxHealth = uint32(float(creature->GetMaxHealth()) * scaling.healthMult);
-            if (!newMaxHealth)
-                newMaxHealth = 1;
+            if (std::abs(scaling.healthMult - 1.0f) >= std::numeric_limits<float>::epsilon())
+            {
+                float baseHealth = float(creature->GetMaxHealth()) / worldHealthRate;
+                uint32 newMaxHealth = uint32(baseHealth * scaling.healthMult);
+                if (!newMaxHealth)
+                    newMaxHealth = 1;
 
-            creature->SetCreateHealth(newMaxHealth);
-            creature->SetMaxHealth(newMaxHealth);
-            creature->SetHealth(newMaxHealth);
-            creature->SetStatFlatModifier(UNIT_MOD_HEALTH, BASE_VALUE, float(newMaxHealth));
+                creature->SetCreateHealth(newMaxHealth);
+                creature->SetMaxHealth(newMaxHealth);
+                creature->SetHealth(newMaxHealth);
+                creature->SetStatFlatModifier(UNIT_MOD_HEALTH, BASE_VALUE, float(newMaxHealth));
+            }
+
+            ApplyDamageScale(creature, scaling.damageMult);
         }
     };
 
@@ -253,7 +339,7 @@ namespace
     public:
         OutdoorScaling_UnitScript() : UnitScript("OutdoorScaling_UnitScript", true) { }
 
-        void OnDamage(Unit* attacker, Unit* /*victim*/, uint32& damage) override
+        void ModifySpellDamageTaken(Unit* target, Unit* attacker, int32& damage, SpellInfo const* /*spellInfo*/) override
         {
             if (!attacker || damage == 0 || !attacker->IsCreature())
                 return;
@@ -278,9 +364,13 @@ namespace
             if (std::abs(scaling.damageMult - 1.0f) < std::numeric_limits<float>::epsilon())
                 return;
 
-            damage = uint32(float(damage) * scaling.damageMult);
+            float worldSpellRate = GetWorldSpellDamageRate(creature);
+            if (worldSpellRate <= 0.0f)
+                worldSpellRate = 1.0f;
+
+            damage = int32((float(damage) / worldSpellRate) * scaling.damageMult);
             if (damage == 0)
-                damage = 1;
+                damage = (scaling.damageMult > 0.0f ? 1 : 0);
         }
     };
 
