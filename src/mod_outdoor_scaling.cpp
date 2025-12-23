@@ -14,12 +14,14 @@
 #include "Unit.h"
 #include "World.h"
 
+#include <array>
 #include <cmath>
 #include <limits>
-#include <array>
 #include <sstream>
 #include <string>
 #include <unordered_map>
+
+using namespace Acore::ChatCommands;
 
 namespace
 {
