@@ -1,0 +1,40 @@
+[worldserver]
+
+########################################
+# Outdoor Scaling configuration
+########################################
+#
+# Enable or disable the module
+#   OutdoorScaling.Enable
+#     Default: 1 (enabled)
+#
+OutdoorScaling.Enable = 1
+
+#
+# Per-continent defaults (applies to all outdoor continents unless overridden below)
+# Expansion indices: 0 = Vanilla (Eastern Kingdoms/Kalimdor), 1 = Burning Crusade (Outland), 2 = Wrath (Northrend)
+#
+# Health multipliers
+OutdoorScaling.Continent.0.Health = 1.0
+OutdoorScaling.Continent.1.Health = 1.0
+OutdoorScaling.Continent.2.Health = 1.0
+
+# Damage multipliers (applies to melee and spell damage)
+OutdoorScaling.Continent.0.Damage = 1.0
+OutdoorScaling.Continent.1.Damage = 1.0
+OutdoorScaling.Continent.2.Damage = 1.0
+
+#
+# Per-zone overrides (trumps continent). Format: "ZoneId HealthMult DamageMult, ZoneId HealthMult DamageMult, ..."
+# If DamageMult is omitted it will reuse HealthMult. Values must be > 0 to take effect.
+# Example: OutdoorScaling.ZoneOverrides = "12 1.5, 85 0.8 0.9"
+#
+OutdoorScaling.ZoneOverrides = ""
+
+#
+# Per-creature overrides (trumps zone). Format: "CreatureId HealthMult DamageMult, CreatureId HealthMult DamageMult, ..."
+# If DamageMult is omitted it will reuse HealthMult. Values must be > 0 to take effect.
+# Example: OutdoorScaling.CreatureOverrides = "1234 2.0 1.4, 5678 0.75"
+#
+OutdoorScaling.CreatureOverrides = ""
+
